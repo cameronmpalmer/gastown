@@ -21,6 +21,8 @@ const (
 	AgentGemini AgentPreset = "gemini"
 	// AgentCodex is OpenAI Codex.
 	AgentCodex AgentPreset = "codex"
+	// AgentOpenCode is OpenCode CLI.
+	AgentOpenCode AgentPreset = "opencode"
 	// AgentCursor is Cursor Agent.
 	AgentCursor AgentPreset = "cursor"
 	// AgentAuggie is Auggie CLI.
@@ -130,7 +132,7 @@ var builtinPresets = map[AgentPreset]*AgentPresetInfo{
 		Command:             "codex",
 		Args:                []string{"--yolo"},
 		ProcessNames:        []string{"codex"}, // Codex CLI binary
-		SessionIDEnv:        "", // Codex captures from JSONL output
+		SessionIDEnv:        "",                // Codex captures from JSONL output
 		ResumeFlag:          "resume",
 		ResumeStyle:         "subcommand",
 		SupportsHooks:       false, // Use env/files instead
@@ -138,6 +140,22 @@ var builtinPresets = map[AgentPreset]*AgentPresetInfo{
 		NonInteractive: &NonInteractiveConfig{
 			Subcommand: "exec",
 			OutputFlag: "--json",
+		},
+	},
+	AgentOpenCode: {
+		Name:                AgentOpenCode,
+		Command:             "opencode",
+		Args:                []string{},           // Uses OPENCODE_PERMISSION env var for autonomy
+		ProcessNames:        []string{"opencode"}, // OpenCode CLI binary
+		SessionIDEnv:        "",                   // Session IDs passed via --session flag
+		ResumeFlag:          "--session",
+		ResumeStyle:         "flag",
+		SupportsHooks:       true, // Uses .opencode/plugin/gastown.js
+		SupportsForkSession: false,
+		NonInteractive: &NonInteractiveConfig{
+			Subcommand: "run",
+			PromptFlag: "--prompt",
+			OutputFlag: "", // OpenCode run doesn't have structured output flag
 		},
 	},
 	AgentCursor: {

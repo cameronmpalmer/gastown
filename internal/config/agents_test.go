@@ -10,7 +10,7 @@ import (
 
 func TestBuiltinPresets(t *testing.T) {
 	// Ensure all built-in presets are accessible
-	presets := []AgentPreset{AgentClaude, AgentGemini, AgentCodex, AgentCursor, AgentAuggie, AgentAmp}
+	presets := []AgentPreset{AgentClaude, AgentGemini, AgentCodex, AgentOpenCode, AgentCursor, AgentAuggie, AgentAmp}
 
 	for _, preset := range presets {
 		info := GetAgentPreset(preset)
@@ -39,11 +39,11 @@ func TestGetAgentPresetByName(t *testing.T) {
 		{"claude", AgentClaude, false},
 		{"gemini", AgentGemini, false},
 		{"codex", AgentCodex, false},
+		{"opencode", AgentOpenCode, false},
 		{"cursor", AgentCursor, false},
 		{"auggie", AgentAuggie, false},
 		{"amp", AgentAmp, false},
-		{"aider", "", true},    // Not built-in, can be added via config
-		{"opencode", "", true}, // Not built-in, can be added via config
+		{"aider", "", true}, // Not built-in, can be added via config
 		{"unknown", "", true},
 	}
 
@@ -71,6 +71,7 @@ func TestRuntimeConfigFromPreset(t *testing.T) {
 		{AgentClaude, "claude"},
 		{AgentGemini, "gemini"},
 		{AgentCodex, "codex"},
+		{AgentOpenCode, "opencode"},
 		{AgentCursor, "cursor-agent"},
 		{AgentAuggie, "auggie"},
 		{AgentAmp, "amp"},
@@ -95,11 +96,11 @@ func TestIsKnownPreset(t *testing.T) {
 		{"claude", true},
 		{"gemini", true},
 		{"codex", true},
+		{"opencode", true},
 		{"cursor", true},
 		{"auggie", true},
 		{"amp", true},
-		{"aider", false},    // Not built-in, can be added via config
-		{"opencode", false}, // Not built-in, can be added via config
+		{"aider", false}, // Not built-in, can be added via config
 		{"unknown", false},
 		{"chatgpt", false},
 	}
@@ -326,10 +327,10 @@ func TestGetSessionIDEnvVar(t *testing.T) {
 	}{
 		{"claude", "CLAUDE_SESSION_ID"},
 		{"gemini", "GEMINI_SESSION_ID"},
-		{"codex", ""},    // Codex uses JSONL output instead
-		{"cursor", ""},   // Cursor uses --resume with chatId directly
-		{"auggie", ""},   // Auggie uses --resume directly
-		{"amp", ""},      // AMP uses 'threads continue' subcommand
+		{"codex", ""},  // Codex uses JSONL output instead
+		{"cursor", ""}, // Cursor uses --resume with chatId directly
+		{"auggie", ""}, // Auggie uses --resume directly
+		{"amp", ""},    // AMP uses 'threads continue' subcommand
 		{"unknown", ""},
 	}
 
