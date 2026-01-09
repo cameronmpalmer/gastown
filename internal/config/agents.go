@@ -145,7 +145,7 @@ var builtinPresets = map[AgentPreset]*AgentPresetInfo{
 	AgentOpenCode: {
 		Name:                AgentOpenCode,
 		Command:             "opencode",
-		Args:                []string{},           // Uses OPENCODE_PERMISSION env var for autonomy
+		Args:                []string{},
 		ProcessNames:        []string{"opencode"}, // OpenCode CLI binary
 		SessionIDEnv:        "",                   // Session IDs passed via --session flag
 		ResumeFlag:          "--session",
@@ -345,9 +345,14 @@ func RuntimeConfigFromPreset(preset AgentPreset) *RuntimeConfig {
 		return DefaultRuntimeConfig()
 	}
 
+	// Copy args to avoid mutation. Use empty slice (not nil) if preset has no args,
+	// so that normalizeRuntimeConfig doesn't add default args.
+	args := make([]string, len(info.Args))
+	copy(args, info.Args)
+
 	return &RuntimeConfig{
 		Command: info.Command,
-		Args:    append([]string(nil), info.Args...), // Copy to avoid mutation
+		Args:    args,
 	}
 }
 

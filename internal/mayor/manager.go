@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/steveyegge/gastown/internal/claude"
 	"github.com/steveyegge/gastown/internal/config"
 	"github.com/steveyegge/gastown/internal/constants"
+	"github.com/steveyegge/gastown/internal/runtime"
 	"github.com/steveyegge/gastown/internal/session"
 	"github.com/steveyegge/gastown/internal/tmux"
 )
@@ -54,14 +54,21 @@ func (m *Manager) Start(agentOverride string) error {
 	t := tmux.NewTmux()
 	sessionID := m.SessionName()
 
+	// Resolve runtime config early (needed for agent detection)
+	runtimeConfig, _, err := config.ResolveAgentConfigWithOverride(m.townRoot, "", agentOverride)
+	if err != nil {
+		return fmt.Errorf("resolving agent config: %w", err)
+	}
+
 	// Check if session already exists
 	running, _ := t.HasSession(sessionID)
 	if running {
-		// Session exists - check if Claude is actually running (healthy vs zombie)
-		if t.IsClaudeRunning(sessionID) {
+		// Session exists - check if agent is actually running (healthy vs zombie)
+		expectedCommands := config.ExpectedPaneCommands(runtimeConfig)
+		if t.IsAgentRunning(sessionID, expectedCommands...) {
 			return ErrAlreadyRunning
 		}
-		// Zombie - tmux alive but Claude dead. Kill and recreate.
+		// Zombie - tmux alive but agent dead. Kill and recreate.
 		if err := t.KillSession(sessionID); err != nil {
 			return fmt.Errorf("killing zombie session: %w", err)
 		}
@@ -73,9 +80,9 @@ func (m *Manager) Start(agentOverride string) error {
 		return fmt.Errorf("creating mayor directory: %w", err)
 	}
 
-	// Ensure Claude settings exist
-	if err := claude.EnsureSettingsForRole(mayorDir, "mayor"); err != nil {
-		return fmt.Errorf("ensuring Claude settings: %w", err)
+	// Ensure runtime settings exist (handles both Claude and Opencode)
+	if err := runtime.EnsureSettingsForRole(mayorDir, "mayor", runtimeConfig); err != nil {
+		return fmt.Errorf("ensuring runtime settings: %w", err)
 	}
 
 	// Create new tmux session
@@ -91,13 +98,15 @@ func (m *Manager) Start(agentOverride string) error {
 	theme := tmux.MayorTheme()
 	_ = t.ConfigureGasTownSession(sessionID, theme, "", "Mayor", "coordinator")
 
-	// Launch Claude - the startup hook handles 'gt prime' automatically
+	// Launch agent - the startup hook handles 'gt prime' automatically
 	// Export GT_ROLE and BD_ACTOR in the command since tmux SetEnvironment only affects new panes
-	startupCmd, err := config.BuildAgentStartupCommandWithAgentOverride("mayor", "mayor", "", "", agentOverride)
-	if err != nil {
-		_ = t.KillSession(sessionID) // best-effort cleanup
-		return fmt.Errorf("building startup command: %w", err)
+	// Use the already-resolved runtimeConfig to avoid re-resolution which may use wrong cwd
+	envVars := map[string]string{
+		"GT_ROLE":         "mayor",
+		"BD_ACTOR":        "mayor",
+		"GIT_AUTHOR_NAME": "mayor",
 	}
+	startupCmd := config.BuildStartupCommandFromConfig(runtimeConfig, envVars, "")
 	// Wait for shell to be ready before sending keys (prevents "can't find pane" under load)
 	if err := t.WaitForShellReady(sessionID, 5*time.Second); err != nil {
 		_ = t.KillSession(sessionID)
@@ -105,10 +114,10 @@ func (m *Manager) Start(agentOverride string) error {
 	}
 	if err := t.SendKeysDelayed(sessionID, startupCmd, 200); err != nil {
 		_ = t.KillSession(sessionID) // best-effort cleanup
-		return fmt.Errorf("starting Claude agent: %w", err)
+		return fmt.Errorf("starting agent: %w", err)
 	}
 
-	// Wait for Claude to start (non-fatal)
+	// Wait for agent to start (non-fatal)
 	if err := t.WaitForCommand(sessionID, constants.SupportedShells, constants.ClaudeStartTimeout); err != nil {
 		// Non-fatal - try to continue anyway
 	}

@@ -616,3 +616,29 @@ func TestLoadRigAgentRegistry(t *testing.T) {
 		}
 	})
 }
+
+// TestRuntimeConfigFromPresetEmptyArgs verifies that presets with empty args
+// don't get default Claude args applied.
+func TestRuntimeConfigFromPresetEmptyArgs(t *testing.T) {
+	// OpenCode has empty Args in its preset definition
+	rc := RuntimeConfigFromPreset(AgentOpenCode)
+	if rc == nil {
+		t.Fatal("RuntimeConfigFromPreset(opencode) returned nil")
+	}
+
+	// Args should be empty, not the Claude default --dangerously-skip-permissions
+	if len(rc.Args) != 0 {
+		t.Errorf("opencode RuntimeConfig.Args = %v, want []", rc.Args)
+	}
+
+	// When normalized, should still not have default args since Args is non-nil
+	cmd := rc.BuildCommand()
+	if strings.Contains(cmd, "--dangerously-skip-permissions") {
+		t.Errorf("opencode BuildCommand() = %q should not contain Claude's default args", cmd)
+	}
+
+	// Command should be just "opencode" with no args
+	if cmd != "opencode" {
+		t.Errorf("opencode BuildCommand() = %q, want just 'opencode'", cmd)
+	}
+}

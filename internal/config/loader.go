@@ -1164,6 +1164,29 @@ func BuildStartupCommandWithAgentOverride(envVars map[string]string, rigPath, pr
 	return cmd, nil
 }
 
+// BuildStartupCommandFromConfig builds a startup command using an already-resolved RuntimeConfig.
+// This avoids re-resolving the config when the caller has already done so.
+func BuildStartupCommandFromConfig(rc *RuntimeConfig, envVars map[string]string, prompt string) string {
+	var exports []string
+	for k, v := range envVars {
+		exports = append(exports, fmt.Sprintf("%s=%s", k, v))
+	}
+	sort.Strings(exports)
+
+	var cmd string
+	if len(exports) > 0 {
+		cmd = "export " + strings.Join(exports, " ") + " && "
+	}
+
+	if prompt != "" {
+		cmd += rc.BuildCommandWithPrompt(prompt)
+	} else {
+		cmd += rc.BuildCommand()
+	}
+
+	return cmd
+}
+
 // BuildAgentStartupCommand is a convenience function for starting agent sessions.
 // It sets standard environment variables (GT_ROLE, BD_ACTOR, GIT_AUTHOR_NAME)
 // and builds the full startup command.
